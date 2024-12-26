@@ -52,8 +52,7 @@
 
   redirectUrl.searchParams.set('from', fromTime);
   redirectUrl.searchParams.set('to', toTime);
-
-  window.location.replace(`${domain}/${dashboard}?from=${fromTime}&to=${toTime}`);
+  window.location.replace(redirectUrl.href);
 })();
 </script>
 </body>
