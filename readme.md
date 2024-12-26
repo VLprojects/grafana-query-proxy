@@ -1,0 +1,1 @@
+Query proxy for grafana dashboards
