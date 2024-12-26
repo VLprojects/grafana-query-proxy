@@ -1,1 +1,60 @@
-hello time
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Time Proxy</title>
+</head>
+<body>
+<script>
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const varParamsArray = [...params.entries()].filter(([key]) => key.startsWith('var-'));
+  const timestamp = params.get('timestamp');
+  const rangeParam = params.get('range');
+  const dashboard = params.get('dashboard');
+  const domain = 'https://monitoring.livedigital.space';
+
+
+  if (!timestamp || !dashboard) {
+    window.location.replace(redirectUrl);
+    return;
+  }
+
+  let range;
+  switch (rangeParam) {
+    case '1m':
+      range = 60_000;
+      break;
+    case '10m':
+      range = 60_000 * 5;
+      break;
+    case '1h':
+      range = 60_000 * 30;
+      break;
+    case '6h':
+      range = 60_000 * 60 * 3;
+      break;
+    case '1d':
+      range = 60_000 * 60 * 12;
+      break;
+    default:
+      range = 60_000;
+  }
+
+  const originalTime = parseInt(timestamp, 10);
+  const fromTime = originalTime - range;
+  const toTime   = originalTime + range;
+  const redirectUrl = new URL(`${domain}/${dashboard}`);
+
+  for (const [key, value] of varParamsArray) {
+    redirectUrl.searchParams.set(key, value);
+  }
+
+  redirectUrl.searchParams.set('from', fromTime);
+  redirectUrl.searchParams.set('to', toTime);
+
+  window.location.replace(`${domain}/${dashboard}?from=${fromTime}&to=${toTime}`);
+})();
+</script>
+</body>
+</html>
