@@ -10,16 +10,68 @@
   const params = new URLSearchParams(window.location.search);
   const varParamsArray = [...params.entries()].filter(([key]) => key.startsWith('var-'));
   const timestamp = params.get('timestamp');
+  const fromParam = params.get('from');
+  const toParam = params.get('to');
   const rangeParam = params.get('range');
   const dashboard = params.get('dashboard');
   const domain = 'https://monitoring.livedigital.space';
 
-
-  if (!timestamp || !dashboard) {
+  if (!dashboard || (!timestamp && !fromParam)) {
     window.location.replace(domain);
     return;
   }
 
+  function redirect(fromTime, toTime) {
+    const redirectUrl = new URL(`${domain}/${dashboard}`);
+
+    for (const [key, value] of varParamsArray) {
+      redirectUrl.searchParams.set(key, value);
+    }
+
+    redirectUrl.searchParams.set('from', fromTime);
+    redirectUrl.searchParams.set('to', toTime);
+    window.location.replace(redirectUrl.href);
+  }
+
+  // Принимает время в одном из форматов и возвращает unix-миллисекунды (или NaN):
+  //  - unix-секунды или unix-миллисекунды («1783000000», «1783000000000»)
+  //  - ClickHouse DateTime «2026-07-09 12:34:56» — интерпретируется как UTC
+  //  - ISO 8601 («2026-07-09T12:34:56Z»)
+  function toMs(value) {
+    const trimmed = value.trim();
+
+    if (/^\d+$/.test(trimmed)) {
+      const parsed = parseInt(trimmed, 10);
+      return parsed < 1e12 ? parsed * 1000 : parsed;
+    }
+
+    let iso = trimmed.replace(' ', 'T');
+    const hasTimezone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(iso);
+    if (!hasTimezone) {
+      iso += 'Z';
+    }
+
+    return Date.parse(iso);
+  }
+
+  // Режим интервала: заданы точные границы (например, время входа и выхода
+  // участника). Границы расширяются на PADDING, чтобы края графиков не обрезались.
+  // Если "to" не задано (участник ещё в звонке) — берётся текущее время.
+  if (fromParam) {
+    const PADDING = 60_000;
+    const fromTime = toMs(fromParam);
+    const toTime = toParam ? toMs(toParam) : Date.now();
+
+    if (isNaN(fromTime) || isNaN(toTime)) {
+      window.location.replace(domain);
+      return;
+    }
+
+    redirect(fromTime - PADDING, toTime + PADDING);
+    return;
+  }
+
+  // Режим точки во времени: timestamp ± range
   let range;
   switch (rangeParam) {
     case '1m':
@@ -42,17 +94,7 @@
   }
 
   const originalTime = parseInt(timestamp, 10);
-  const fromTime = originalTime - range;
-  const toTime   = originalTime + range;
-  const redirectUrl = new URL(`${domain}/${dashboard}`);
-
-  for (const [key, value] of varParamsArray) {
-    redirectUrl.searchParams.set(key, value);
-  }
-
-  redirectUrl.searchParams.set('from', fromTime);
-  redirectUrl.searchParams.set('to', toTime);
-  window.location.replace(redirectUrl.href);
+  redirect(originalTime - range, originalTime + range);
 })();
 </script>
 </body>
