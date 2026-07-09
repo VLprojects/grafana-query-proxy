@@ -52,11 +52,14 @@
     return Date.parse(trimmed.replace(' ', 'T'));
   }
 
-  // Режим интервала: заданы точные границы (например, время входа и выхода
-  // участника). Границы расширяются на PADDING, чтобы края графиков не обрезались.
+  // Режим интервала: заданы точные границы (например, первая и последняя
+  // сетевая метрика участника). Границы расширяются на небольшой паддинг,
+  // чтобы крайние точки не ложились ровно на рамку графика; величину можно
+  // переопределить параметром pad (в секундах, pad=0 — без паддинга).
   // Если "to" не задано (участник ещё в звонке) — берётся текущее время.
   if (fromParam) {
-    const PADDING = 60_000;
+    const padParam = parseInt(params.get('pad'), 10);
+    const padding = (Number.isNaN(padParam) || padParam < 0 ? 15 : padParam) * 1000;
     const fromTime = toMs(fromParam);
     const toTime = toParam ? toMs(toParam) : Date.now();
 
@@ -65,7 +68,7 @@
       return;
     }
 
-    redirect(fromTime - PADDING, toTime + PADDING);
+    redirect(fromTime - padding, toTime + padding);
     return;
   }
 
